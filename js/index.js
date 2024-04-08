@@ -7,6 +7,7 @@ let aba = {
         this.registerSW();
         this.beforeInstallPrompt();
         this.initInstallPrompt();
+        this.afterInstalled();
     },
     beforeInstallPrompt(){
         window.addEventListener('beforeinstallprompt', (e) => {
@@ -27,6 +28,13 @@ let aba = {
                     }
                     this.defPrompt = null;
                 });
+        });
+    },
+    afterInstalled(){
+        window.addEventListener('appinstalled', (evt) => {
+            // App was installed, hide the install button
+            const installButton = document.getElementById('install');
+            installButton.style.display = 'none';
         });
     },
     registerSW(){
