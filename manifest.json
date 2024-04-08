@@ -3,17 +3,23 @@
   "name": "Ara-Babam-Ara: A fetching tool for secondhand motor vehicles dealing web site",
   "icons": [
     {
-      "src": "images/icons-192.png",
+      "src": "img/ara-babam-ara_192.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "images/icons-512.png",
+      "src": "img/ara-babam-ara_512.png",
       "type": "image/png",
       "sizes": "512x512"
+    },
+    {
+      "src": "img/ara-babam-ara_512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ],
-  "start_url": "/",
+  "start_url": "/index.html",
   "background_color": "#3367D6",
   "display": "standalone",
   "scope": "/",
