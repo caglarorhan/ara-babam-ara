@@ -3,6 +3,7 @@ let aba = {
     name: 'Ara (Ba) bam (Ara)',
     target_url: 'https://www.arabam.com/ikinci-el',
     defPrompt:null,
+    bread_crumb:[],
     init(){
         this.firstCheck();
         this.registerSW();
@@ -20,10 +21,15 @@ let aba = {
         this.createBreadCrumb({title:'Ikinci El'});
     },
     createBreadCrumb(crumbObject={title:String}){
-        let firstCrumb = document.createElement('span');
-        firstCrumb.classList.add('crumb');
-        firstCrumb.innerHTML = ">   " + crumbObject.title;
-        document.querySelector('.bread_crumb').appendChild(firstCrumb);
+        document.querySelector('.bread_crumb').innerHTML = '';
+        this.bread_crumb.push(crumbObject);
+        this.bread_crumb.forEach((crumb)=>{
+            let theCrumb = document.createElement('span');
+            theCrumb.classList.add('crumb');
+            theCrumb.innerHTML = ">   " + crumb.title;
+            document.querySelector('.bread_crumb').appendChild(theCrumb);
+        })
+        console.log(this.bread_crumb);
     },
     beforeInstallPrompt(){
         window.addEventListener('beforeinstallprompt', (e) => {
@@ -70,18 +76,37 @@ let aba = {
         categories.classList.add('cluster');
         categories.innerHTML = `<div class="loader"></div>`;
         document.querySelector('.container').appendChild(categories);
-        categories.innerHTML =  this.putInTemplate["mainCategories"](await this.getFacets(targetURL));
+        console.log(await this.getFacets(targetURL));
+        categories.innerHTML =  this.putInTemplate["mainCategories"]({breadCrumbLength: this.bread_crumb.length,items:await this.getFacets(targetURL)});
         categories.querySelectorAll('li').forEach((item)=>{
             item.addEventListener('click',()=>{
+                categories.querySelectorAll('li').forEach((li) => {
+                    li.classList.remove('chosen');
+                });
+                item.classList.add("chosen");
+                this.deleteClusterDivs(item.dataset.crumbDepth)
                 console.log(targetURL +"/"+ item.dataset.absoluteUrl);
                 this.showTheCategories(this.target_url +"/"+ item.dataset.absoluteUrl);
-                this.createBreadCrumb({title:item.dataset.displayValue});
+                this.createBreadCrumb({title:item.dataset.displayValue, absoluteUrl:item.dataset.absoluteUrl});
             })
         })
 
 
     },
+    deleteClusterDivs(crumbDepth){
+        let counter=0;
+        document.querySelectorAll('.cluster').forEach((cluster)=>{
+            if(counter>=crumbDepth){
+                cluster.remove();
+            }
+            counter++;
+        })
+        document.querySelectorAll('.cluster').forEach((cluster)=>{
+        this.bread_crumb.length = crumbDepth;
+        })
+    },
     async getFacets(targetURL=this.target_url){
+        console.log(targetURL);
         let parser = new DOMParser();
         let options = {
             method: 'GET',
@@ -104,7 +129,7 @@ let aba = {
                         let facetsValue = match[1];
                         let targetObject = (JSON.parse(`{"facets":${facetsValue}}`)).facets[0];
                         console.log(targetObject);
-                        if(targetObject.SelectedCategory.SubCategories.length){
+                        if(targetObject.SelectedCategory.SubCategories.length && targetObject.Items.length){
                             return targetObject.SelectedCategory.SubCategories;
                         }else{
                             return targetObject.Items;
@@ -119,11 +144,12 @@ let aba = {
         }
     },
     putInTemplate:{
+
         "mainCategories":(dataObj)=>{
             console.log(dataObj);
             let template = `<ul>`;
-            for (let item of dataObj) {
-                template += `<li data-absolute-url="${item.AbsoluteUrl}" data-display-value="${item.DisplayValue}">${item.FriendlyUrl}</li>`;
+            for (let item of dataObj.items) {
+                template += `<li data-crumb-depth="${dataObj.breadCrumbLength}" data-absolute-url="${item.AbsoluteUrl}" data-display-value="${item.DisplayValue}">${item.FriendlyUrl}</li>`;
             }
             template += `</ul>`;
             return template

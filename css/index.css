@@ -76,8 +76,12 @@ body{
     background-color: #e0e0e0; /* Darker shade for more noticeable hover effect */
 }
 
-.cluster ul li:active {
-    background-color: #cccccc; /* Change as needed */
+.cluster ul li.active {
+    background-color: #e0e0e0; /* Change as needed */
+}
+
+.chosen {
+    background-color: pink !important; /* Change as needed */
 }
 
 .cluster ul li:focus {
