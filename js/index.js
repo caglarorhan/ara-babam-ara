@@ -10,13 +10,20 @@ let aba = {
         this.initInstallPrompt();
         this.afterInstalled();
         //
-        this.showMainCategories();
+        this.showTheCategories(this.target_url).then(r=>r);
     },
     firstCheck(){
         if(window.matchMedia('(display-mode: standalone)').matches){
             const installButton = document.getElementById('install');
             installButton.style.display = 'none';
         }
+        this.createBreadCrumb({title:'Ikinci El'});
+    },
+    createBreadCrumb(crumbObject={title:String}){
+        let firstCrumb = document.createElement('span');
+        firstCrumb.classList.add('crumb');
+        firstCrumb.innerHTML = ">   " + crumbObject.title;
+        document.querySelector('.bread_crumb').appendChild(firstCrumb);
     },
     beforeInstallPrompt(){
         window.addEventListener('beforeinstallprompt', (e) => {
@@ -41,7 +48,6 @@ let aba = {
     },
     afterInstalled(){
         window.addEventListener('appinstalled', (evt) => {
-            // App was installed, hide the install button
             const installButton = document.getElementById('install');
             installButton.style.display = 'none';
         });
@@ -59,10 +65,23 @@ let aba = {
                 });
         }
     },
-    async showMainCategories(){
-        document.body.innerHTML += this.putInTemplate["mainCategories"](await this.getFacets());//this.showmainCategories(await this.getFacets());
+    async showTheCategories(targetURL){
+        let categories = document.createElement('div');
+        categories.classList.add('cluster');
+        categories.innerHTML = `<div class="loader"></div>`;
+        document.querySelector('.container').appendChild(categories);
+        categories.innerHTML =  this.putInTemplate["mainCategories"](await this.getFacets(targetURL));
+        categories.querySelectorAll('li').forEach((item)=>{
+            item.addEventListener('click',()=>{
+                console.log(targetURL +"/"+ item.dataset.absoluteUrl);
+                this.showTheCategories(item.dataset.absoluteUrl);
+                this.createBreadCrumb({title:item.dataset.displayValue});
+            })
+        })
+
+
     },
-    async getFacets(){
+    async getFacets(targetURL=this.target_url){
         let parser = new DOMParser();
         let options = {
             method: 'GET',
@@ -70,7 +89,7 @@ let aba = {
             cache: 'default'
         }
         try {
-            let response = await fetch(this.target_url, options);
+            let response = await fetch(targetURL, options);
             console.log(response.ok);
             let text = await response.text();
             let html = parser.parseFromString(text, 'text/html');
@@ -83,8 +102,13 @@ let aba = {
                     let match = script.textContent.match(/var facets = (.*?);/);
                     if (match) {
                         let facetsValue = match[1];
-                        console.log(JSON.parse(`{"facets":${facetsValue}}`));
-                        return (JSON.parse(`{"facets":${facetsValue}}`)).facets[0].Items;
+                        let targetObject = (JSON.parse(`{"facets":${facetsValue}}`)).facets[0];
+                        console.log(targetObject);
+                        if(targetObject.SelectedCategory.SubCategories.length){
+                            return targetObject.SelectedCategory.SubCategories;
+                        }else{
+                            return targetObject.Items;
+                        }
                     }
                 }
             }
@@ -96,11 +120,12 @@ let aba = {
     },
     putInTemplate:{
         "mainCategories":(dataObj)=>{
-            let template = `<table>`;
+            console.log(dataObj);
+            let template = `<ul>`;
             for (let item of dataObj) {
-                template += `<tr><td>${item.FriendlyUrl}</td></tr>`;
+                template += `<li data-absolute-url="${item.AbsoluteUrl}" data-display-value="${item.DisplayValue}">${item.FriendlyUrl}</li>`;
             }
-            template += `</table>`;
+            template += `</ul>`;
             return template
         }
     }
