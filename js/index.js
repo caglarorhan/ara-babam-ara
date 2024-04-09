@@ -74,7 +74,7 @@ let aba = {
         categories.querySelectorAll('li').forEach((item)=>{
             item.addEventListener('click',()=>{
                 console.log(targetURL +"/"+ item.dataset.absoluteUrl);
-                this.showTheCategories(item.dataset.absoluteUrl);
+                this.showTheCategories(this.target_url +"/"+ item.dataset.absoluteUrl);
                 this.createBreadCrumb({title:item.dataset.displayValue});
             })
         })
