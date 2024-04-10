@@ -20,16 +20,30 @@ let aba = {
         }
         this.createBreadCrumb({title:'Ikinci El'});
     },
-    createBreadCrumb(crumbObject={title:String}){
+    createBreadCrumb(crumbObject){
         document.querySelector('.bread_crumb').innerHTML = '';
-        this.bread_crumb.push(crumbObject);
-        this.bread_crumb.forEach((crumb)=>{
+        if(crumbObject){
+            this.bread_crumb.push(crumbObject);
+        console.log(this.bread_crumb);
+        }
+        this.bread_crumb.forEach((crumb, index)=>{
             let theCrumb = document.createElement('span');
             theCrumb.classList.add('crumb');
             theCrumb.innerHTML = ">   " + crumb.title;
             document.querySelector('.bread_crumb').appendChild(theCrumb);
         })
         console.log(this.bread_crumb);
+        document.querySelectorAll('.bread_crumb span').forEach((theCrumb, index)=>{
+            theCrumb.addEventListener('click',()=>{
+                this.deleteClusterDivs(index);
+                console.log('---------------------------------------')
+                console.log(index);
+                console.log(this.bread_crumb)
+                console.log('---------------------------------------')
+                //this.showTheCategories(this.target_url +"/"+ crumb.absoluteUrl);
+                this.createBreadCrumb();
+            })
+        })
     },
     beforeInstallPrompt(){
         window.addEventListener('beforeinstallprompt', (e) => {
@@ -96,8 +110,11 @@ let aba = {
     deleteClusterDivs(crumbDepth){
         let counter=0;
         document.querySelectorAll('.cluster').forEach((cluster)=>{
-            if(counter>=crumbDepth){
+            if(counter>crumbDepth){
                 cluster.remove();
+            }
+            if(counter===crumbDepth) {
+                cluster.querySelector('.chosen').classList.remove('chosen');
             }
             counter++;
         })
