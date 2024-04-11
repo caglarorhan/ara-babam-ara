@@ -18,32 +18,7 @@ let aba = {
             const installButton = document.getElementById('install');
             installButton.style.display = 'none';
         }
-        this.createBreadCrumb({title:'Ikinci El'});
-    },
-    createBreadCrumb(crumbObject){
-        document.querySelector('.bread_crumb').innerHTML = '';
-        if(crumbObject){
-            this.bread_crumb.push(crumbObject);
-        console.log(this.bread_crumb);
-        }
-        this.bread_crumb.forEach((crumb, index)=>{
-            let theCrumb = document.createElement('span');
-            theCrumb.classList.add('crumb');
-            theCrumb.innerHTML = ">   " + crumb.title;
-            document.querySelector('.bread_crumb').appendChild(theCrumb);
-        })
-        console.log(this.bread_crumb);
-        document.querySelectorAll('.bread_crumb span').forEach((theCrumb, index)=>{
-            theCrumb.addEventListener('click',()=>{
-                this.deleteClusterDivs(index);
-                console.log('---------------------------------------')
-                console.log(index);
-                console.log(this.bread_crumb)
-                console.log('---------------------------------------')
-                //this.showTheCategories(this.target_url +"/"+ crumb.absoluteUrl);
-                this.createBreadCrumb();
-            })
-        })
+        this.createBreadCrumb({title:'Ikinci El', absoluteUrl: ''});
     },
     beforeInstallPrompt(){
         window.addEventListener('beforeinstallprompt', (e) => {
@@ -58,9 +33,9 @@ let aba = {
             this.defPrompt.userChoice
                 .then((choiceResult) => {
                     if (choiceResult.outcome === 'accepted') {
-                        console.log('User accepted the A2HS prompt');
+                        //console.log('User accepted the A2HS prompt');
                     } else {
-                        console.log('User dismissed the A2HS prompt');
+                        //console.log('User dismissed the A2HS prompt');
                     }
                     this.defPrompt = null;
                 });
@@ -73,39 +48,95 @@ let aba = {
         });
     },
     registerSW(){
-        console.log('Registering SW');
+        //console.log('Registering SW');
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js')
                 .then((registration) => {
-                    console.log('Service Worker registered with scope: ', registration.scope);
-                    //registration.update();
+                    //console.log('Service Worker registered with scope: ', registration.scope);
+                    registration.update();
                 })
                 .catch((err) => {
-                    console.log('Service Worker registration failed: ', err);
+                    //console.log('Service Worker registration failed: ', err);
                 });
         }
+    },
+    createBreadCrumb(crumbObject){
+        if(crumbObject){
+            this.bread_crumb.push(crumbObject);
+            console.log(`Yeni kayıt eklendi: ${crumbObject.title} - ${crumbObject.absoluteUrl}`);
+            console.log(this.bread_crumb);
+        }
+        this.createBreadCrumbRoute();
+    },
+    createBreadCrumbRoute(){
+        document.querySelector('.bread_crumb').innerHTML = '';
+        this.bread_crumb.forEach((crumb, index)=>{
+            let theCrumb = document.createElement('span');
+            theCrumb.classList.add('crumb');
+            theCrumb.innerHTML = ">   " + crumb.title;
+            theCrumb.dataset.depth = index.toString();
+            document.querySelector('.bread_crumb').appendChild(theCrumb);
+        })
+        //console.log(this.bread_crumb);
+        document.querySelectorAll('.bread_crumb span').forEach((theCrumb, index)=>{
+            theCrumb.addEventListener('click',(event)=>{
+                this.resizeBreadCrumb(index);
+                this.deleteClusterDivs(index);
+            })
+        })
+    },
+    resizeBreadCrumb(index){
+        this.bread_crumb.length = index+1;
+        this.createBreadCrumbRoute();
     },
     async showTheCategories(targetURL){
         let categories = document.createElement('div');
         categories.classList.add('cluster');
         categories.innerHTML = `<div class="loader"></div>`;
         document.querySelector('.container').appendChild(categories);
-        console.log(await this.getFacets(targetURL));
-        categories.innerHTML =  this.putInTemplate["mainCategories"]({breadCrumbLength: this.bread_crumb.length,items:await this.getFacets(targetURL)});
+       // console.log(await this.getFacets(targetURL));
+        const categoryItems = await this.getFacets(targetURL);
+        console.log(categoryItems);
+        console.log(this.bread_crumb.map(bc=>bc.title));
+        let isAlreadyThere = this.bread_crumb.find(crumb=>crumb.title===categoryItems[0].FriendlyUrl);
+        if(isAlreadyThere){
+            console.log('Already there');
+            categories.innerHTML =  this.putInTemplate["ProcessButtons"]({});
+            document.getElementById('show_button').addEventListener('click', ()=>{
+                this.showTheList();
+            })
+            document.getElementById('follow_button').addEventListener('click', ()=>{
+                let theDialog =  this.putInTemplate["followUp"]({path:this.bread_crumb.map(bc=>bc.title).join(' > '), absoluteUrl: this.bread_crumb[this.bread_crumb.length-1].absoluteUrl});
+                document.body.insertAdjacentHTML('beforeend',theDialog);
+                document.getElementById('followUpDialog').showModal();
+                document.getElementById('save_button').addEventListener('click', ()=>{
+                    console.log('kaydedildi');
+                })
+            })
+            return;
+        }
+
+        categories.innerHTML =  this.putInTemplate["mainCategories"]({breadCrumbLength: this.bread_crumb.length, items: categoryItems});
         categories.querySelectorAll('li').forEach((item)=>{
             item.addEventListener('click',()=>{
-                categories.querySelectorAll('li').forEach((li) => {
-                    li.classList.remove('chosen');
-                });
+                categories.querySelector('li.chosen')?.classList.remove('chosen');
                 item.classList.add("chosen");
-                this.deleteClusterDivs(item.dataset.crumbDepth)
-                console.log(targetURL +"/"+ item.dataset.absoluteUrl);
+                this.deleteClusterDivs(item.dataset.crumbDepth);
                 this.showTheCategories(this.target_url +"/"+ item.dataset.absoluteUrl);
                 this.createBreadCrumb({title:item.dataset.displayValue, absoluteUrl:item.dataset.absoluteUrl});
             })
         })
 
 
+    },
+    async showTheList(){
+        let categories = document.createElement('div');
+        categories.classList.add('cluster');
+        let clusterDivCount = document.querySelectorAll('.cluster').length;
+        categories.style.width= 100- (10*clusterDivCount) + '%';
+        categories.innerHTML = `<div class="loader"></div>`;
+        document.querySelector('.container').appendChild(categories);
+        categories.innerHTML = 'Fetch sonucu donen liste buraya aktarilacak...'
     },
     deleteClusterDivs(crumbDepth){
         let counter=0;
@@ -118,12 +149,9 @@ let aba = {
             }
             counter++;
         })
-        document.querySelectorAll('.cluster').forEach((cluster)=>{
-        this.bread_crumb.length = crumbDepth;
-        })
     },
     async getFacets(targetURL=this.target_url){
-        console.log(targetURL);
+        //console.log(targetURL);
         let parser = new DOMParser();
         let options = {
             method: 'GET',
@@ -132,7 +160,7 @@ let aba = {
         }
         try {
             let response = await fetch(targetURL, options);
-            console.log(response.ok);
+            //console.log(response.ok);
             let text = await response.text();
             let html = parser.parseFromString(text, 'text/html');
 
@@ -145,7 +173,7 @@ let aba = {
                     if (match) {
                         let facetsValue = match[1];
                         let targetObject = (JSON.parse(`{"facets":${facetsValue}}`)).facets[0];
-                        console.log(targetObject);
+                       // console.log(targetObject);
                         if(targetObject.SelectedCategory.SubCategories.length && targetObject.Items.length){
                             return targetObject.SelectedCategory.SubCategories;
                         }else{
@@ -161,9 +189,26 @@ let aba = {
         }
     },
     putInTemplate:{
-
+        "ProcessButtons":(dataObj)=>{
+            let template=``;
+            template+=`<button id="follow_button">Takibe Al</button>`;
+            template+=`<button id="show_button">Goster</button>`;
+            return template;
+        },
+        "followUp":(dataObj={})=>{
+            return `
+                                        <dialog id="followUpDialog">
+                                        <p>Asagida detaylari gorunen araci sinifini takibe alacaksiniz. Push NotificationbBildirim sikligi defult olarak 3 saattir.</p>
+                                        <form method="dialog">
+                                        <div>PATH: ${dataObj.path}</div>
+                                        <div>ABSOLUTE URL: ${dataObj.absoluteUrl}</div>
+                                        <button id="save_button">SAVE</button>
+                                        <button value="cancel" formmethod="dialog">IPTAL</button>
+                                        </form>
+                                        </dialog>`;
+        },
         "mainCategories":(dataObj)=>{
-            console.log(dataObj);
+            //console.log(dataObj);
             let template = `<ul>`;
             for (let item of dataObj.items) {
                 template += `<li data-crumb-depth="${dataObj.breadCrumbLength}" data-absolute-url="${item.AbsoluteUrl}" data-display-value="${item.DisplayValue}">${item.FriendlyUrl}</li>`;
