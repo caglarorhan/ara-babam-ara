@@ -1,7 +1,6 @@
 const CACHE_NAME = 'v3';
 const urlsToCache = [
     './',
-    './index.html',
     './css/index.css',
     './js/index.js',
     './img/ara-babam-ara_64.png',

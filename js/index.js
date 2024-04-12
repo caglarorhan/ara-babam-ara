@@ -4,14 +4,24 @@ let aba = {
     target_url: 'https://www.arabam.com/ikinci-el',
     defPrompt:null,
     bread_crumb:[],
+    categoryMemory:{},
     init(){
         this.firstCheck();
         this.registerSW();
         this.beforeInstallPrompt();
         this.initInstallPrompt();
         this.afterInstalled();
+
         //
         this.showTheCategories(this.target_url).then(r=>r);
+    },
+    memorizeCategories(path=[]){
+        if(!path || !Array.isArray(path)) {return false;}
+
+
+    },
+    reCallCategories(){
+
     },
     firstCheck(){
         if(window.matchMedia('(display-mode: standalone)').matches){
@@ -80,13 +90,17 @@ let aba = {
         //console.log(this.bread_crumb);
         document.querySelectorAll('.bread_crumb span').forEach((theCrumb, index)=>{
             theCrumb.addEventListener('click',(event)=>{
+
                 this.resizeBreadCrumb(index);
                 this.deleteClusterDivs(index);
             })
         })
     },
     resizeBreadCrumb(index){
-        this.bread_crumb.length = index+1;
+        index = parseInt(index);
+        console.log(`bread crumb icin kullanilacak resize sayisi: ${index}`);
+        console.log(`bread crumb size: ${this.bread_crumb.length}`);
+        this.bread_crumb.length = index;
         this.createBreadCrumbRoute();
     },
     async showTheCategories(targetURL){
@@ -97,13 +111,16 @@ let aba = {
        // console.log(await this.getFacets(targetURL));
         const categoryItems = await this.getFacets(targetURL);
         console.log(categoryItems);
-        console.log(this.bread_crumb.map(bc=>bc.title));
-        let isAlreadyThere = this.bread_crumb.find(crumb=>crumb.title===categoryItems[0].FriendlyUrl);
+        console.log(this.bread_crumb);
+        let isAlreadyThere = this.bread_crumb.find(crumb=> {
+            console.log(crumb.title, categoryItems[0].FriendlyUrl);
+            return crumb.title === categoryItems[0].FriendlyUrl
+        });
         if(isAlreadyThere){
             console.log('Already there');
             categories.innerHTML =  this.putInTemplate["ProcessButtons"]({});
             document.getElementById('show_button').addEventListener('click', ()=>{
-                this.showTheList();
+                this.showTheList(this.target_url+'/'+this.bread_crumb[this.bread_crumb.length-1].absoluteUrl);
             })
             document.getElementById('follow_button').addEventListener('click', ()=>{
                 let theDialog =  this.putInTemplate["followUp"]({path:this.bread_crumb.map(bc=>bc.title).join(' > '), absoluteUrl: this.bread_crumb[this.bread_crumb.length-1].absoluteUrl});
@@ -115,38 +132,40 @@ let aba = {
             })
             return;
         }
-
         categories.innerHTML =  this.putInTemplate["mainCategories"]({breadCrumbLength: this.bread_crumb.length, items: categoryItems});
         categories.querySelectorAll('li').forEach((item)=>{
             item.addEventListener('click',()=>{
                 categories.querySelector('li.chosen')?.classList.remove('chosen');
                 item.classList.add("chosen");
+                this.resizeBreadCrumb(item.dataset.crumbDepth)
+                this.createBreadCrumb({title:item.dataset.displayValue, absoluteUrl:item.dataset.absoluteUrl});
                 this.deleteClusterDivs(item.dataset.crumbDepth);
                 this.showTheCategories(this.target_url +"/"+ item.dataset.absoluteUrl);
-                this.createBreadCrumb({title:item.dataset.displayValue, absoluteUrl:item.dataset.absoluteUrl});
             })
         })
 
 
     },
-    async showTheList(){
+    async showTheList(targetURL){
         let categories = document.createElement('div');
         categories.classList.add('cluster');
         let clusterDivCount = document.querySelectorAll('.cluster').length;
         categories.style.width= 100- (10*clusterDivCount) + '%';
         categories.innerHTML = `<div class="loader"></div>`;
         document.querySelector('.container').appendChild(categories);
-        categories.innerHTML = 'Fetch sonucu donen liste buraya aktarilacak...'
+        let listItems = await this.getJSON(targetURL);
+        console.log(listItems);
+        categories.innerHTML = this.putInTemplate["showItems"](listItems);
     },
     deleteClusterDivs(crumbDepth){
         let counter=0;
         document.querySelectorAll('.cluster').forEach((cluster)=>{
-            if(counter>crumbDepth){
+            if(counter>=crumbDepth){
                 cluster.remove();
             }
-            if(counter===crumbDepth) {
-                cluster.querySelector('.chosen').classList.remove('chosen');
-            }
+            // if(counter===crumbDepth) {
+            //     cluster.querySelector('.chosen').classList.remove('chosen');
+            // }
             counter++;
         })
     },
@@ -188,7 +207,46 @@ let aba = {
             console.error('Error:', error);
         }
     },
+    async getJSON(targetURL){
+        //application/ld+json
+        //console.log(targetURL);
+        let parser = new DOMParser();
+        let options = {
+            method: 'GET',
+            mode: 'cors',
+            cache: 'default'
+        }
+        try {
+            let response = await fetch(targetURL, options);
+            //console.log(response.ok);
+            let text = await response.text();
+            let html = parser.parseFromString(text, 'text/html');
+
+            let ldJSON = JSON.parse(html.querySelector('script[type="application/ld+json"]').innerText);
+            console.log(ldJSON)
+            return {ldJSON, targetURL};
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    },
     putInTemplate:{
+        "showItems":(dataObj)=>{
+            console.log(dataObj);
+            let target_url = dataObj.targetURL;
+            let template=``;
+            for(let item of dataObj.ldJSON){
+                if(item["@type"] === "Car") {
+                    template+=`<div class="item">`;
+                    template+=`<img src="${item.image}" alt="" /> `;
+                    template+=`<span>${item.name}</span>`;
+                    template+=`<span>${item.vehicleModelDate}</span>`;
+                    template+=`<span>${item.mileageFromOdometer.value} ${item.mileageFromOdometer.unitCode}</span>`;
+                    template+=`<span>${item.offers.price} ${item.offers.priceCurrency}</span>`;
+                    template+=`</div>`;
+                }
+            }
+            return template;
+        },
         "ProcessButtons":(dataObj)=>{
             let template=``;
             template+=`<button id="follow_button">Takibe Al</button>`;
