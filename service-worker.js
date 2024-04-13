@@ -18,31 +18,14 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('fetch', (event) => {
     event.respondWith(
-        caches.match(event.request)
-            .then((response) => {
-                if (response) {
-                    return response;
-                }
-
-                let fetchRequest = event.request.clone();
-
-                return fetch(fetchRequest).then(
-                    (response) => {
-                        if (!response || response.status !== 200 || response.type !== 'basic') {
-                            return response;
-                        }
-
-                        let responseToCache = response.clone();
-
-                        caches.open(CACHE_NAME)
-                            .then((cache) => {
-                                cache.put(event.request, responseToCache);
-                            });
-
-                        return response;
-                    }
-                );
-            })
+        caches.open(CACHE_NAME).then((cache) => {
+            return fetch(event.request).then((networkResponse) => {
+                cache.put(event.request, networkResponse.clone());
+                return networkResponse;
+            }).catch(() => {
+                return cache.match(event.request);
+            });
+        })
     );
 });
 

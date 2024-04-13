@@ -5,6 +5,7 @@ let aba = {
     defPrompt:null,
     bread_crumb:[],
     categoryMemory:{},
+    followUpMemory:[],
     init(){
         this.firstCheck();
         this.registerSW();
@@ -14,6 +15,38 @@ let aba = {
 
         //
         this.showTheCategories(this.target_url).then(r=>r);
+    },
+    followUpACategory(dataObj){
+
+        if(document.querySelector('#followUpDialog')){
+            document.querySelector('#followUpDialog').remove();
+        }
+        console.log('follow button clicked');
+        let path = this.bread_crumb.map(bc=>bc.title).join(' > ');
+        let absoluteUrl = this.bread_crumb[this.bread_crumb.length-1].absoluteUrl;
+        let categoryData = {path, absoluteUrl};
+        let theDialog =  this.putInTemplate["followUp"](categoryData);
+        document.body.insertAdjacentHTML('beforeend',theDialog);
+        document.getElementById('followUpDialog').showModal();
+
+        document.getElementById('save_button').addEventListener('click', ()=>{
+
+            let isAlreadyFollowed = this.followUpMemory.findIndex(savedItem=>savedItem.absoluteUrl === absoluteUrl);
+            console.log(isAlreadyFollowed);
+            if(isAlreadyFollowed !== -1){
+                document.getElementById('followUpDialog').innerHTML="Zaten takipteymisiz!!"
+                setTimeout(()=>{
+                    document.getElementById('followUpDialog').close();
+                },1500);
+                return;
+            }
+            this.followUpMemory.push(categoryData);
+            console.log(this.followUpMemory);
+            document.getElementById('followUpDialog').innerHTML="Basariyla takibe alindi!"
+            setTimeout(()=>{
+                document.getElementById('followUpDialog').close();
+            },1500);
+        })
     },
     memorizeCategories(path=[]){
         if(!path || !Array.isArray(path)) {return false;}
@@ -104,14 +137,18 @@ let aba = {
         this.createBreadCrumbRoute();
     },
     async showTheCategories(targetURL){
-        let categories = document.createElement('div');
-        categories.classList.add('cluster');
-        categories.innerHTML = `<div class="loader"></div>`;
-        document.querySelector('.container').appendChild(categories);
+            let categories = document.createElement('div');
+            categories.classList.add('cluster');
+            categories.innerHTML = `<div class="loader"></div>`;
+            document.querySelector('.container').appendChild(categories);
        // console.log(await this.getFacets(targetURL));
         const categoryItems = await this.getFacets(targetURL);
         console.log(categoryItems);
         console.log(this.bread_crumb);
+        if(categoryItems===Error){
+            categories.innerHTML =  this.putInTemplate["Error"]({Error});
+            return;
+        }
         let isAlreadyThere = this.bread_crumb.find(crumb=> {
             console.log(crumb.title, categoryItems[0].FriendlyUrl);
             return crumb.title === categoryItems[0].FriendlyUrl
@@ -119,16 +156,12 @@ let aba = {
         if(isAlreadyThere){
             console.log('Already there');
             categories.innerHTML =  this.putInTemplate["ProcessButtons"]({});
+            categories.id='process_buttons';
             document.getElementById('show_button').addEventListener('click', ()=>{
                 this.showTheList(this.target_url+'/'+this.bread_crumb[this.bread_crumb.length-1].absoluteUrl);
             })
             document.getElementById('follow_button').addEventListener('click', ()=>{
-                let theDialog =  this.putInTemplate["followUp"]({path:this.bread_crumb.map(bc=>bc.title).join(' > '), absoluteUrl: this.bread_crumb[this.bread_crumb.length-1].absoluteUrl});
-                document.body.insertAdjacentHTML('beforeend',theDialog);
-                document.getElementById('followUpDialog').showModal();
-                document.getElementById('save_button').addEventListener('click', ()=>{
-                    console.log('kaydedildi');
-                })
+                this.followUpACategory();
             })
             return;
         }
@@ -147,14 +180,22 @@ let aba = {
 
     },
     async showTheList(targetURL){
+        if(document.querySelector('#item_list')){
+            document.querySelector('#item_list').remove();
+        }
         let categories = document.createElement('div');
         categories.classList.add('cluster');
+        categories.id='item_list';
         let clusterDivCount = document.querySelectorAll('.cluster').length;
         categories.style.width= 100- (10*clusterDivCount) + '%';
         categories.innerHTML = `<div class="loader"></div>`;
         document.querySelector('.container').appendChild(categories);
         let listItems = await this.getJSON(targetURL);
         console.log(listItems);
+        if(listItems===Error){
+            categories.innerHTML =  this.putInTemplate["Error"]({Error});
+            return;
+        }
         categories.innerHTML = this.putInTemplate["showItems"](listItems);
     },
     deleteClusterDivs(crumbDepth){
@@ -205,6 +246,7 @@ let aba = {
 
         } catch (error) {
             console.error('Error:', error);
+            return error;
         }
     },
     async getJSON(targetURL){
@@ -227,9 +269,11 @@ let aba = {
             return {ldJSON, targetURL};
         } catch (error) {
             console.error('Error:', error);
+            return error;
         }
     },
     putInTemplate:{
+        "Error":(Error)=>{return Error},
         "showItems":(dataObj)=>{
             console.log(dataObj);
             let target_url = dataObj.targetURL;
@@ -237,11 +281,11 @@ let aba = {
             for(let item of dataObj.ldJSON){
                 if(item["@type"] === "Car") {
                     template+=`<div class="item">`;
-                    template+=`<img src="${item.image}" alt="" /> `;
-                    template+=`<span>${item.name}</span>`;
-                    template+=`<span>${item.vehicleModelDate}</span>`;
-                    template+=`<span>${item.mileageFromOdometer.value} ${item.mileageFromOdometer.unitCode}</span>`;
-                    template+=`<span>${item.offers.price} ${item.offers.priceCurrency}</span>`;
+                    template+=`<img src="${item?.image}" alt="" /> `;
+                    template+=`<span>${item?.name}</span>`;
+                    template+=`<span>${item?.vehicleModelDate}</span>`;
+                    template+=`<span>${item?.mileageFromOdometer?.value} ${item?.mileageFromOdometer?.unitCode}</span>`;
+                    template+=`<span>${item?.offers?.price} ${item?.offers?.priceCurrency}</span>`;
                     template+=`</div>`;
                 }
             }
