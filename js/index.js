@@ -13,9 +13,20 @@ let aba = {
         this.initInstallPrompt();
         this.afterInstalled();
 
+        this.loadFollowUpMemory();
+
         //
         this.showTheCategories(this.target_url).then(r=>r);
     },
+    loadFollowUpMemory(){
+        if(localStorage.getItem('followUpMemory')){
+            this.followUpMemory = JSON.parse(localStorage.getItem('followUpMemory'));
+            console.log(this.followUpMemory);
+        }
+    },
+    saveFollowUpMemory(){
+        localStorage.setItem('followUpMemory', JSON.stringify(this.followUpMemory));
+        },
     followUpACategory(dataObj){
 
         if(document.querySelector('#followUpDialog')){
@@ -41,12 +52,14 @@ let aba = {
                 return;
             }
             this.followUpMemory.push(categoryData);
+            this.saveFollowUpMemory();
             console.log(this.followUpMemory);
             document.getElementById('followUpDialog').innerHTML="Basariyla takibe alindi!"
             setTimeout(()=>{
                 document.getElementById('followUpDialog').close();
             },1500);
         })
+
     },
     memorizeCategories(path=[]){
         if(!path || !Array.isArray(path)) {return false;}
