@@ -44,3 +44,26 @@ self.addEventListener('activate', (event) => {
         })
     );
 });
+
+
+self.addEventListener('periodicsync', (event) => {
+    if (event.tag === 'check-web-page') {
+        event.waitUntil(fetchAndNotify());
+    }
+});
+
+async function fetchAndNotify() {
+    // Fetch the website
+    const response = await fetch('https://www.example.com');
+    const data = await response.json();
+
+    // Check if something changed
+    if (data.hasChanged) {
+        // Show a notification
+        self.registration.showNotification('Website Updated', {
+            body: 'The website has been updated.',
+            icon: 'images/icon.png',
+            badge: 'images/badge.png'
+        });
+    }
+}

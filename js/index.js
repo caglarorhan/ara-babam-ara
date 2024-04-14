@@ -1,59 +1,96 @@
 let aba = {
     version: '2024.0.1',
     name: 'Ara (Ba) bam (Ara)',
+    root_url:'https://www.arabam.com',
     target_url: 'https://www.arabam.com/ikinci-el',
     defPrompt:null,
     bread_crumb:[],
-    categoryMemory:{},
-    followUpMemory:[],
-    init(){
+    db:null,
+    async init(){
+       this. dbName='followUpMemoryDB';
+       this.storeName='followUpMemoryStore';
+        await this.openDatabase();
+        this.periodicSync();
         this.firstCheck();
         this.registerSW();
         this.beforeInstallPrompt();
         this.initInstallPrompt();
         this.afterInstalled();
-
-        this.loadFollowUpMemory();
-
-        //
         this.showTheCategories(this.target_url).then(r=>r);
     },
-    loadFollowUpMemory(){
-        if(localStorage.getItem('followUpMemory')){
-            this.followUpMemory = JSON.parse(localStorage.getItem('followUpMemory'));
-            console.log(this.followUpMemory);
+    periodicSync(){
+        navigator.serviceWorker.ready.then((registration) => {
+            if ('periodicSync' in registration) {
+                registration.periodicSync.register('check-web-page', {
+                    minInterval: 3 * 60 * 60 * 1000, // 3 hours
+                });
+            }
+        });
+    },
+    openDatabase(){
+        return new Promise((resolve, reject) => {
+            let request = indexedDB.open(this.dbName, 1);
+
+            request.onupgradeneeded = function(event) {
+                this.db = event.target.result;
+                let objectStore = this.db.createObjectStore(this.storeName, { keyPath: 'absoluteUrl', autoIncrement: true });
+            }.bind(this);
+
+            request.onsuccess = function(event) {
+                this.db = event.target.result;
+                console.log('Database opened successfully');
+                let transaction = this.db.transaction([this.storeName], 'readwrite');
+                let objectStore = transaction.objectStore(this.storeName);
+                resolve();
+            }.bind(this);
+
+            request.onerror = function(event) {
+                console.log('Error opening database', event.target.errorCode);
+                reject(event.target.errorCode);
+            };
+        });
+    },
+    saveFollowUpMemoryToDB(followUp){
+        let transaction = this.db.transaction([this.storeName], 'readwrite');
+        let objectStore = transaction.objectStore(this.storeName);
+        let request = objectStore.put(followUp);
+        request.onsuccess = (event)=>{
+            console.log('Database ', event.target.result);
+        }
+        request.onerror = (event)=>{
+            console.log('Database ', event.target.errorCode);
         }
     },
-    saveFollowUpMemory(){
-        localStorage.setItem('followUpMemory', JSON.stringify(this.followUpMemory));
-        },
-    followUpACategory(dataObj){
+
+    async followUpACategory(dataObj){
 
         if(document.querySelector('#followUpDialog')){
             document.querySelector('#followUpDialog').remove();
         }
         console.log('follow button clicked');
+        let itemsUrls = await this.showTheList(this.target_url+'/'+this.bread_crumb[this.bread_crumb.length-1].absoluteUrl);
+        itemsUrls = itemsUrls.ldJSON.filter(item=>item["@type"] === "Car").map(item=>item.url);
         let path = this.bread_crumb.map(bc=>bc.title).join(' > ');
         let absoluteUrl = this.bread_crumb[this.bread_crumb.length-1].absoluteUrl;
-        let categoryData = {path, absoluteUrl};
+        let categoryData = {path, absoluteUrl, itemsUrls};
         let theDialog =  this.putInTemplate["followUp"](categoryData);
         document.body.insertAdjacentHTML('beforeend',theDialog);
         document.getElementById('followUpDialog').showModal();
 
         document.getElementById('save_button').addEventListener('click', ()=>{
 
-            let isAlreadyFollowed = this.followUpMemory.findIndex(savedItem=>savedItem.absoluteUrl === absoluteUrl);
-            console.log(isAlreadyFollowed);
-            if(isAlreadyFollowed !== -1){
-                document.getElementById('followUpDialog').innerHTML="Zaten takipteymisiz!!"
-                setTimeout(()=>{
-                    document.getElementById('followUpDialog').close();
-                },1500);
-                return;
-            }
-            this.followUpMemory.push(categoryData);
-            this.saveFollowUpMemory();
-            console.log(this.followUpMemory);
+            // let isAlreadyFollowed = this.followUpMemory.findIndex(savedItem=>savedItem.absoluteUrl === absoluteUrl);
+            // console.log(isAlreadyFollowed);
+            // if(isAlreadyFollowed !== -1){
+            //     this.followUpMemory[isAlreadyFollowed].itemsUrls = [...categoryData.itemsUrls];
+            //     document.getElementById('followUpDialog').innerHTML="Takip edilen subcategory araclarinin url bilgileri guncellendi!"
+            //     setTimeout(()=>{
+            //         document.getElementById('followUpDialog').close();
+            //     },1500);
+            //     console.log(this.followUpMemory);
+            //     return;
+            // }
+            this.saveFollowUpMemoryToDB(categoryData);
             document.getElementById('followUpDialog').innerHTML="Basariyla takibe alindi!"
             setTimeout(()=>{
                 document.getElementById('followUpDialog').close();
@@ -209,7 +246,9 @@ let aba = {
             categories.innerHTML =  this.putInTemplate["Error"]({Error});
             return;
         }
+        listItems.baseUrl = this.root_url;
         categories.innerHTML = this.putInTemplate["showItems"](listItems);
+        return listItems;
     },
     deleteClusterDivs(crumbDepth){
         let counter=0;
@@ -290,17 +329,17 @@ let aba = {
         "showItems":(dataObj)=>{
             console.log(dataObj);
             let target_url = dataObj.targetURL;
+            let base_url = dataObj.baseUrl;
             let template=``;
-            for(let item of dataObj.ldJSON){
-                if(item["@type"] === "Car") {
-                    template+=`<div class="item">`;
-                    template+=`<img src="${item?.image}" alt="" /> `;
+            for(let item of dataObj.ldJSON.filter(item=>item["@type"]==="Car")){
+                    template+=`<a href="${base_url}${item?.url}" target="_blank" title="Ilani acmak icin tiklayiniz"><div class="item">`;
+                    template+=`<img src="${item?.image}" alt="" />`;
                     template+=`<span>${item?.name}</span>`;
                     template+=`<span>${item?.vehicleModelDate}</span>`;
                     template+=`<span>${item?.mileageFromOdometer?.value} ${item?.mileageFromOdometer?.unitCode}</span>`;
                     template+=`<span>${item?.offers?.price} ${item?.offers?.priceCurrency}</span>`;
-                    template+=`</div>`;
-                }
+                    template+=`</div></a>`;
+
             }
             return template;
         },

@@ -112,7 +112,13 @@ body{
 @keyframes l2 {
     100% {background-size:110%}
 }
-.item {
+
+.cluster a{
+    text-decoration: none;
+    color: #333;
+    font-weight: bold;}
+
+.cluster .item {
     display: grid;
     grid-template-columns: 50px repeat(4, 1fr);
     gap: 10px;
@@ -123,16 +129,22 @@ body{
     background-color: #f9f9f9;
     border-radius: 5px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    text-decoration: none !important
+}
+.cluster .item:hover {
+    /* Add your desired hover styles here. For example: */
+    background-color: lightblue;
+    cursor: pointer;
 }
 
-.item img {
+.cluster .item img {
     grid-column: 1;
     width: 50px;
     height: 50px;
     object-fit: cover;
 }
 
-.item span {
+.cluster .item span {
     text-align: center;
     padding: 5px;
 }
