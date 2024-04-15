@@ -7,6 +7,10 @@ const urlsToCache = [
     './img/ara-babam-ara_192.png',
     './img/ara-babam-ara_512.png',
 ];
+const dbName='followUpMemoryDB';
+const storeName='followUpMemoryStore';
+const target_url='https://www.arabam.com/ikinci-el';
+const getFacetUrl = "https://www.arabam.com/listing/GetFacets?url=";
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
@@ -14,7 +18,6 @@ self.addEventListener('install', (event) => {
         })
     );
 });
-
 
 self.addEventListener('fetch', (event) => {
     event.respondWith(
@@ -28,7 +31,6 @@ self.addEventListener('fetch', (event) => {
         })
     );
 });
-
 
 self.addEventListener('activate', (event) => {
     const cacheWhitelist = [CACHE_NAME];
@@ -45,7 +47,6 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-
 self.addEventListener('periodicsync', (event) => {
     if (event.tag === 'check-web-page') {
         event.waitUntil(fetchAndNotify());
@@ -54,16 +55,34 @@ self.addEventListener('periodicsync', (event) => {
 
 async function fetchAndNotify() {
     // Fetch the website
-    const response = await fetch('https://www.example.com');
-    const data = await response.json();
+    const dbRequest = indexedDB.open(dbName, 1);
 
-    // Check if something changed
-    if (data.hasChanged) {
-        // Show a notification
-        self.registration.showNotification('Website Updated', {
-            body: 'The website has been updated.',
-            icon: 'images/icon.png',
-            badge: 'images/badge.png'
-        });
-    }
+    dbRequest.onsuccess = function(event) {
+        const db = event.target.result;
+
+        // Start a transaction
+        const transaction = db.transaction([storeName], 'readonly');
+        const objectStore = transaction.objectStore(storeName);
+
+        // Get all records
+        objectStore.getAll().onsuccess = async function(event) {
+            const records = event.target.result;
+
+            // Loop through all records
+            for (let record of records) {
+                // Loop through all URLs in the itemsUrls array
+                const absoluteUrl = record.value.absoluteUrl;
+                const response = await fetch(getFacetUrl + target_url + absoluteUrl);
+                const data = await response.json();
+                // BURADA GELEN DATA DB ILE KIYASLANACAK EGER FARK VARSA NOTIFICATION CIKARTILACAK
+                // ORNEK NIFICIATION CODU BURADA
+            }
+        };
+    };
+
+    await self.registration.showNotification('Website Updated', {
+        body: 'The website has been updated.',
+        icon: 'images/icon.png',
+        badge: 'images/badge.png'
+    });
 }

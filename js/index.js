@@ -22,14 +22,14 @@ let aba = {
         navigator.serviceWorker.ready.then((registration) => {
             if ('periodicSync' in registration) {
                 registration.periodicSync.register('check-web-page', {
-                    minInterval: 3 * 60 * 60 * 1000, // 3 hours
+                    minInterval:  120000, // 2 min
                 });
             }
         });
     },
     openDatabase(){
         return new Promise((resolve, reject) => {
-            let request = indexedDB.open(this.dbName, 1);
+            const request = indexedDB.open(this.dbName, 1);
 
             request.onupgradeneeded = function(event) {
                 this.db = event.target.result;
@@ -241,6 +241,11 @@ let aba = {
         categories.innerHTML = `<div class="loader"></div>`;
         document.querySelector('.container').appendChild(categories);
         let listItems = await this.getJSON(targetURL);
+        if(listItems instanceof Error){
+            console.log(listItems.message.toString()); // Add this line
+            categories.innerHTML =  this.putInTemplate["Error"]({Error: listItems.message.toString()});
+            return;
+        }
         console.log(listItems);
         if(listItems===Error){
             categories.innerHTML =  this.putInTemplate["Error"]({Error});
@@ -325,7 +330,7 @@ let aba = {
         }
     },
     putInTemplate:{
-        "Error":(Error)=>{return Error},
+        "Error":(Error)=>{return `Error: ${Error}`},
         "showItems":(dataObj)=>{
             console.log(dataObj);
             let target_url = dataObj.targetURL;
