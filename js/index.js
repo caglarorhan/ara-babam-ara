@@ -357,11 +357,11 @@ let aba = {
         "followUp":(dataObj={})=>{
             return `
                                         <dialog id="followUpDialog">
-                                        <p>Asagida detaylari gorunen araci sinifini takibe alacaksiniz. Push NotificationbBildirim sikligi defult olarak 3 saattir.</p>
+                                        <p>Asagida detaylari gorunen araclarin ilanlarini kaydedeceksiniz (indexedDB)</p>
                                         <form method="dialog">
                                         <div>PATH: ${dataObj.path}</div>
                                         <div>ABSOLUTE URL: ${dataObj.absoluteUrl}</div>
-                                        <button id="save_button">SAVE</button>
+                                        <button id="save_button">KAYDET</button>
                                         <button value="cancel" formmethod="dialog">IPTAL</button>
                                         </form>
                                         </dialog>`;
