@@ -380,6 +380,23 @@ let aba = {
 
 }
 
+navigator.serviceWorker.addEventListener('message', event => {
+    const dataObj = JSON.parse(event.data);
+    switch (dataObj.messageType) {
+        case 'requestPermission':
+            break;
+    }
+});
+
+
+function sendMessageToServiceWorkerSide(messageObject){
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(function(registration) {
+            registration.active.postMessage(JSON.stringify(messageObject));
+        });
+    }
+}
+
 
 window.addEventListener('load', () => {
     aba.init();

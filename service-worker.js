@@ -79,10 +79,23 @@ async function fetchAndNotify() {
             }
         };
     };
-
+    sendMessageToClientSide({messageType:'requestPermission'})
     await self.registration.showNotification('Website Updated', {
         body: 'The website has been updated.',
         icon: 'images/icon.png',
         badge: 'images/badge.png'
     });
 }
+
+// GOOD GENERIC MESSAGING WITH CLIENT SIDE
+function sendMessageToClientSide(messageDataObject){
+    self.clients.matchAll().then(clients => {
+        clients.forEach(client => client.postMessage(JSON.stringify(messageDataObject)));
+    });
+}
+
+
+self.addEventListener('message', function(event) {
+    const dataObj = JSON.parse(event.data);
+    console.log('Received message from client:', event.data);
+});
